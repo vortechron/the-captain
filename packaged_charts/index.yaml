@@ -1,0 +1,36 @@
+apiVersion: v1
+entries:
+  laravel:
+  - apiVersion: v2
+    appVersion: 8.0.0
+    created: "2025-02-20T08:18:45.374073+08:00"
+    description: Helm chart scaffolding for Laravel applications.
+    digest: 151fd84f594c3df84c26ddbbc99ec3f0dd6b01dfa6174a35c23378e3a9d96c14
+    name: laravel
+    type: application
+    urls:
+    - laravel-1.0.0.tgz
+    version: 1.0.0
+  laravel-octane:
+  - apiVersion: v2
+    appVersion: 8.0.0
+    created: "2025-02-20T08:18:45.374856+08:00"
+    description: Helm chart scaffolding for Octane-based Laravel applications.
+    digest: c92eab77f6294a3a10f9c7ef2d9ebba42db68f61a03414de75463721668cdd21
+    name: laravel-octane
+    type: application
+    urls:
+    - laravel-octane-1.0.0.tgz
+    version: 1.0.0
+  laravel-worker:
+  - apiVersion: v2
+    appVersion: 8.0.0
+    created: "2025-02-20T08:18:45.375621+08:00"
+    description: Helm chart scaffolding for additional Laravel worker applications.
+    digest: bcb426fed3178379e4d10c0ed88d8c7d62e8335d7445771d48721fa1d60c7f08
+    name: laravel-worker
+    type: application
+    urls:
+    - laravel-worker-1.0.0.tgz
+    version: 1.0.0
+generated: "2025-02-20T08:18:45.354972+08:00"

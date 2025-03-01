@@ -1,0 +1,12 @@
+FROM asia-southeast1-docker.pkg.dev/vortechron/base/worker:1.0.0-8.1-cli-alpine
+
+COPY . /var/www/html
+
+RUN mkdir -p /var/www/html/storage/logs/ && \
+    chown -R www-data:www-data /var/www/html && \
+    rm -rf tests/ .git/ .github/ *.md && \
+    rm -rf vendor/*/test/ vendor/*/tests/*
+
+WORKDIR /var/www/html
+
+ENTRYPOINT ["php", "-a"]

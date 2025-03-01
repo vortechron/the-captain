@@ -1,0 +1,38 @@
+ARG BASE_TAG=8.2-cli-alpine
+
+FROM php:${BASE_TAG}
+
+# The base image uses Alpine Linux, so we should use apk instead of apt-get
+RUN apk --update add \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    zip \
+    unzip \
+    git \
+    icu-dev \
+    oniguruma-dev \
+    libzip-dev \
+    openssh \
+    bash \
+    && rm -rf /var/cache/apk/*
+
+# Install PHP extensions.
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+    gd \
+    pdo \
+    pdo_mysql \
+    intl \
+    pcntl \
+    bcmath \
+    zip \
+    exif
+
+# Install Composer globally.
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Create a directory for your Laravel application.
+WORKDIR /var/www/html
+
+ENTRYPOINT ["php", "-a"]
