@@ -1,28 +1,102 @@
 replicaCount: 1
 
-image:
-  repository: asia-southeast1-docker.pkg.dev/vortechron/apps/golang-example
-  pullPolicy: IfNotPresent
-  tag: "latest"
+strategy: {}
+  # type: RollingUpdate
+  # rollingUpdate:
+  #   maxSurge: 0
+  #   maxUnavailable: 1
 
-imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: "golang-example"
+imagePullSecrets: []
+
+# Configure Golang application container
+app:
+  image:
+    repository: asia-southeast1-docker.pkg.dev/vortechron/apps/golang-example
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  command: []
+  # - /app/main
+  # - --port=8080
+
+  # Specify the Secret name to pull the environment variables from.
+  # If not specified, it defaults to "{release name}-env". It should
+  # be a secret that contains environment variables that will be used during pod creation.
+  # The secret should be created by you before running the app.
+  envSecretName: "golang-env"
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # Extra environment variables for the app container.
+  extraEnv:
+    - name: GIN_MODE
+      value: "release"
+    - name: PORT
+      value: "8080"
+    - name: POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+
+  # Extra volumes to mount on the container.
+  extraVolumeMounts: []
+  # - name: some-folder
+  #   mountPath: /some/path
+
+  # Configure the healthcheck for the Golang process.
+  # If enabled, Kubernetes will periodically check the Golang Server
+  # process to be alive and to serve HTTP requests.
+  healthcheck:
+    enabled: true
+    period: 10
+    path: /health
 
 serviceAccount:
+  # Specifies whether a service account should be created
   create: true
+  # Annotations to add to the service account
   annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
   name: ""
+
+rbac:
+  create: false
+  rules: []
+  #  - apiGroups:
+  #      - ""
+  #    resources:
+  #      - pods
+  #    verbs:
+  #      - get
+  #      - list
 
 podAnnotations: {}
 
 podSecurityContext: {}
+  # fsGroup: 2000
 
 securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
 
 service:
   type: ClusterIP
   port: 8080
+  annotations: {}
+  # Set annotations for the service.
 
 ingress:
   enabled: true
@@ -37,19 +111,31 @@ ingress:
           pathType: Prefix
   tls: []
 
-resources:
-  limits:
-    cpu: 500m
-    memory: 512Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
-
 autoscaling:
   enabled: false
   minReplicas: 1
   maxReplicas: 5
   targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+  behavior: {}
+  # Set the behavior for the autoscaler.
+  # https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-configurable-scaling-behavior
+
+  # Custom Metrics will be appended to the default CPU/Memory resources (if they're enabled).
+  customMetrics: []
+  # - type: Pods
+  #   pods:
+  #     metric:
+  #       name: cpu
+  #     target:
+  #       type: AverageValue
+  #       averageValue: "50"
+
+pdb:
+  enabled: true
+  minAvailable: 1
+  # maxUnavailable: 25%
 
 nodeSelector: {}
 
@@ -57,30 +143,29 @@ tolerations: []
 
 affinity: {}
 
-env:
-  - name: GIN_MODE
-    value: "release"
-  - name: PORT
-    value: "8080"
+# Extra volumes to attach to the deployment.
+extraVolumes: []
+# - name: some-folder
+#   emptyDir: {}
 
+# Extra containers to run in the deployment.
+extraContainers: []
+
+# Extra init containers to run in the deployment.
+extraInitContainers: []
+
+# Configure ConfigMap for application configuration
 configMap:
-  enabled: false
-  data: {}
+  enabled: true
+  data:
+    config.json: |
+      {
+        "app_name": "golang-example",
+        "debug": false
+      }
 
+# Configure Secret for sensitive data
 secret:
-  enabled: false
-  data: {}
-
-livenessProbe:
-  httpGet:
-    path: /health
-    port: http
-  initialDelaySeconds: 30
-  periodSeconds: 10
-
-readinessProbe:
-  httpGet:
-    path: /health
-    port: http
-  initialDelaySeconds: 5
-  periodSeconds: 10 
+  enabled: true
+  data:
+    api_key: "c2VjcmV0LWFwaS1rZXk="  # base64 encoded 

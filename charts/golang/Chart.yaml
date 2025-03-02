@@ -3,4 +3,16 @@ name: golang
 description: A Helm chart for Golang applications
 type: application
 version: 0.1.0
-appVersion: "1.0.0" 
+appVersion: "1.0.0"
+home: https://github.com/yourusername/the-captain
+sources:
+  - https://github.com/yourusername/the-captain
+maintainers:
+  - name: Your Name
+    email: your.email@example.com
+icon: https://go.dev/images/go-logo-blue.svg
+keywords:
+  - golang
+  - go
+  - web
+  - api 
