@@ -1,0 +1,11 @@
+---
+description: about the project
+globs: 
+alwaysApply: false
+---
+this project is mostly to manage and make my life easier when working with k8s or using container for my laravel and golang
+
+/base_images (is where other dockerfile can use to extend so that its saves them time to compile, as its name suggest, "base images")
+/charts (is helm related charts)
+/example (is where actual application usage, just pretend its like one of the laravel application)
+/packaged_charts (ignore this, just for deploying helm)

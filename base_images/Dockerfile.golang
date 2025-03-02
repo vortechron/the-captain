@@ -1,0 +1,27 @@
+FROM golang:1.23-alpine
+
+# Install minimal production dependencies
+RUN apk add --no-cache ca-certificates tzdata && \
+    update-ca-certificates
+
+# Set working directory
+WORKDIR /app
+
+# Create a non-root user for the application
+RUN adduser -D -g '' appuser
+
+# Set environment variables for production builds
+ENV CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64 \
+    GO111MODULE=on
+
+# Create and set permissions for the app directory
+RUN mkdir -p /app && \
+    chown -R appuser:appuser /app
+
+# Switch to non-root user for security
+USER appuser
+
+# Default command
+CMD ["go", "version"]
