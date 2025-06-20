@@ -27,7 +27,9 @@ RUN apk --update add \
         libzip-dev \
         gettext-dev \
         libxslt-dev \
-        libgcrypt-dev && \
+        libgcrypt-dev \
+        icu-dev \
+        libsodium-dev && \
     pecl channel-update pecl.php.net && \
     pecl install mcrypt redis-5.3.4 && \
     docker-php-ext-install \
@@ -44,10 +46,14 @@ RUN apk --update add \
         gettext \
         soap \
         sockets \
-        xsl && \
+        xsl \
+        dom \
+        fileinfo \
+        exif \
+        session && \
     docker-php-ext-configure gd --with-freetype=/usr/lib/ --with-jpeg=/usr/lib/ && \
     docker-php-ext-install gd && \
-    docker-php-ext-enable redis && \
+    docker-php-ext-enable redis sodium && \
     rm -rf /tmp/pear && \
     rm /var/cache/apk/*
 
