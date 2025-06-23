@@ -117,7 +117,7 @@ then apply issuer
   helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
   
   helm upgrade --install metrics-server metrics-server/metrics-server \
-    --namespace kube-system \
+    --namespace observability \
     --set args="{--kubelet-preferred-address-types=InternalIP}" \
     --set apiService.create=true
   ```

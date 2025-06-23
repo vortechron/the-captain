@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: patch-staging-terapeas
+  namespace: default
+data:
+  patch.yaml: |
+    spec:
+      template:
+        metadata:
+          annotations:
+            prometheus.io/scrape: "true" 
