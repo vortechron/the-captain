@@ -1,0 +1,173 @@
+# Percona XtraDB Cluster values
+# Production-ready MySQL cluster with MinIO backups + PITR
+
+# Basic cluster configuration
+crName: cluster1
+allowUnsafeConfigurations: false
+
+# MySQL configuration
+pxc:
+  size: 3
+  image:
+    repository: percona/percona-xtradb-cluster
+    tag: 8.0.35-27.1
+  
+  # Resource allocation per pod
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 500m
+    limits:
+      memory: 2Gi
+      cpu: 1000m
+  
+  # Persistence
+  volumeSpec:
+    persistentVolumeClaim:
+      storageClassName: do-block-storage
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 20Gi
+  
+  # MySQL configuration
+  configuration: |
+    [mysqld]
+    wsrep_provider_options="debug=0;gcache.size=300M;gcache.keep_pages_size=300M"
+    wsrep_debug=0
+    wsrep_cluster_name=cluster1
+    binlog_format=ROW
+    default_storage_engine=InnoDB
+    innodb_autoinc_lock_mode=2
+    innodb_locks_unsafe_for_binlog=1
+    max_connections=1024
+    innodb_buffer_pool_size=512M
+    
+    # Binary logging for PITR
+    log-bin=mysql-bin
+    binlog_expire_logs_seconds=604800
+    max_binlog_size=100M
+    sync_binlog=1
+    
+    # GTID for consistent backups
+    gtid_mode=ON
+    enforce_gtid_consistency=ON
+    log_slave_updates=ON
+  
+  # Security context
+  podSecurityContext:
+    runAsUser: 1001
+    runAsGroup: 1001
+    fsGroup: 1001
+    
+  # Anti-affinity to spread pods across nodes
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - percona-xtradb-cluster
+        topologyKey: kubernetes.io/hostname
+        
+  # Commented node affinity examples
+  # nodeAffinity:
+  #   preferredDuringSchedulingIgnoredDuringExecution:
+  #   - weight: 100
+  #     preference:
+  #       matchExpressions:
+  #       - key: node-pool
+  #         operator: In
+  #         values:
+  #         - database
+
+# HAProxy configuration
+haproxy:
+  enabled: true
+  size: 2
+  image:
+    repository: percona/percona-xtradb-cluster-operator
+    tag: 1.14.0-haproxy
+  
+  # Resource allocation
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+      
+  # Service configuration - cluster-internal by default
+  serviceType: ClusterIP
+  # Uncomment to expose as LoadBalancer:
+  # serviceType: LoadBalancer
+  
+  # Anti-affinity for HAProxy pods
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - percona-xtradb-cluster-haproxy
+          topologyKey: kubernetes.io/hostname
+
+# Pod Disruption Budget to protect quorum
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+
+# Backup configuration with MinIO + PITR
+backup:
+  enabled: true
+  image:
+    repository: percona/percona-xtrabackup
+    tag: 8.0.35-33.1
+  
+  # Daily full backup schedule
+  schedule:
+    - name: daily-backup
+      schedule: "0 2 * * *"
+      keep: 7
+      storageName: minio-storage
+      
+  # PITR configuration - binlog backups every 60s
+  pitr:
+    enabled: true
+    storageName: minio-storage
+    timeBetweenUploads: 60
+    
+  # MinIO storage configuration  
+  storages:
+    minio-storage:
+      type: s3
+      s3:
+        bucket: db-backup
+        region: us-east-1
+        endpointUrl: https://minio.terapeas.com
+        credentialsSecret: minio-backup-secret
+        # Use path-style access for MinIO compatibility
+        forcePathStyle: true
+        
+# Secrets - let operator generate random passwords
+secrets:
+  passwords:
+    root: ""
+    xtrabackup: ""
+    monitor: ""
+    clustercheck: ""
+    
+# TLS configuration (optional)
+tls:
+  enabled: false
+  
+# Monitoring (disable for simplicity)
+pmm:
+  enabled: false

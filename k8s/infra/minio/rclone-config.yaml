@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rclone-config
+  namespace: default
+data:
+  rclone.conf: |
+    [minio]
+    type = s3
+    provider = Minio
+    access_key_id = minioadmin
+    secret_access_key = Mpft0qBAEX2yIFXCqe/Ez5kAXZ89cabLEzI90jMtCRg=
+    endpoint = http://minio-service.minio.svc.cluster.local:9000
+    region = us-east-1
+    force_path_style = true
+    disable_checksum = true
+    v4_auth = true

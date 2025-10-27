@@ -1,0 +1,96 @@
+# MySQL Connection Examples for Different Scenarios
+
+# 1. ConfigMap with MySQL connection details (can be used in any namespace)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-connection-config
+  namespace: default  # Change to your app namespace
+data:
+  MYSQL_HOST: "cluster1-pxc-db-haproxy.db.svc.cluster.local"
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: "mysql"  # or your database name
+
+---
+# 2. Secret with MySQL credentials (create in your app namespace)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-credentials
+  namespace: default  # Change to your app namespace
+type: Opaque
+data:
+  # Root credentials (base64 encoded)
+  MYSQL_ROOT_USER: cm9vdA==  # root
+  MYSQL_ROOT_PASSWORD: amdnYjNJaWVubm1JXU9xUw==  # jgab3IiennmI]OqS
+  
+  # App user credentials (if you create a specific app user)
+  MYSQL_USER: YXBwdXNlcg==  # appuser (example)
+  MYSQL_PASSWORD: YXBwcGFzcw==  # apppass (example)
+
+---
+# 3. Example application pod connecting to MySQL
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-client-app
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-client-app
+  template:
+    metadata:
+      labels:
+        app: mysql-client-app
+    spec:
+      containers:
+      - name: app
+        image: mysql:8.0
+        command: ["sleep", "3600"]  # Keep container running for testing
+        env:
+        # Load connection details from ConfigMap
+        - name: MYSQL_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-connection-config
+              key: MYSQL_HOST
+        - name: MYSQL_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-connection-config
+              key: MYSQL_PORT
+        
+        # Load credentials from Secret
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-credentials
+              key: MYSQL_ROOT_PASSWORD
+        
+        # Connection string for applications
+        - name: DATABASE_URL
+          value: "mysql://root:$(MYSQL_ROOT_PASSWORD)@$(MYSQL_HOST):$(MYSQL_PORT)/mysql"
+
+---
+# 4. Job to test MySQL connectivity from another namespace
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mysql-connectivity-test
+  namespace: default
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: mysql-test
+        image: mysql:8.0
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Testing MySQL connectivity..."
+          mysql -h cluster1-pxc-db-haproxy.db.svc.cluster.local -u root -p'jgab3IiennmI]OqS' -e "SELECT 'Connection successful!' as status, @@version as version, NOW() as timestamp;"
+          echo "Connection test completed."

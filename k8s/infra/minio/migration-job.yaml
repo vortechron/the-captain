@@ -1,0 +1,74 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: laravel-storage-migration
+  namespace: default
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: rclone-migration
+        image: rclone/rclone:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Starting Laravel storage migration from PVC to MinIO..."
+          
+          # Test connection and list buckets first
+          echo "Testing MinIO connection..."
+          rclone lsd minio: || { echo "Failed to connect to MinIO. Please check credentials."; exit 1; }
+          
+          # Check if bucket exists, create if not
+          echo "Checking if bucket 'terapeas' exists..."
+          if rclone lsd minio: | grep -q "terapeas"; then
+            echo "Bucket 'terapeas' exists, proceeding..."
+          else
+            echo "Creating bucket terapeas..."
+            rclone mkdir minio:terapeas || { echo "Failed to create bucket. It may already exist."; }
+          fi
+          
+          # Copy all Laravel storage directories to MinIO
+          echo "Copying app/public directory..."
+          rclone copy /source/app/public minio:terapeas -v --progress
+          rclone copy minio:terapeas/app/public minio:terapeas -v --progress
+          
+          # echo "Copying framework directory..."
+          # rclone copy /source/framework minio:terapeas/storage/framework -v --progress
+          
+          # echo "Copying logs directory..."  
+          # rclone copy /source/logs minio:terapeas/storage/logs -v --progress
+          
+          # echo "Copying temp directory..."
+          # rclone copy /source/temp minio:terapeas/storage/temp -v --progress
+          
+          echo "Migration completed successfully!"
+          
+          # Show summary
+          echo "Summary of migrated files:"
+          rclone size minio:terapeas/storage
+        volumeMounts:
+        - name: rclone-config
+          mountPath: /config/rclone
+        - name: source-storage
+          mountPath: /source
+        env:
+        - name: RCLONE_CONFIG
+          value: /config/rclone/rclone.conf
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: rclone-config
+        configMap:
+          name: rclone-config
+      - name: source-storage
+        persistentVolumeClaim:
+          claimName: terapeas-storage
+  backoffLimit: 3

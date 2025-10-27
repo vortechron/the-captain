@@ -1,0 +1,46 @@
+# Minimal Percona XtraDB Cluster configuration
+# Get basic cluster working first
+
+# Basic cluster configuration
+crVersion: 1.18.0
+enableCRValidationWebhook: false
+
+# TLS configuration - disabled for simplicity
+tls:
+  enabled: false
+
+# Unsafe flags to disable TLS requirement and allow single node
+unsafeFlags:
+  tls: true
+  pxcSize: true
+  proxySize: true
+
+# MySQL configuration
+pxc:
+  size: 1  # Start with single node for debugging
+  autoRecovery: true
+  
+  # Resource allocation per pod
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 100m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+
+# HAProxy configuration
+haproxy:
+  enabled: true
+  size: 1
+  
+  # Service configuration - cluster-internal by default
+  serviceType: ClusterIP
+
+# Monitoring (disable for simplicity)
+pmm:
+  enabled: false
+
+# No backups initially - add after cluster is stable
+backup:
+  enabled: false

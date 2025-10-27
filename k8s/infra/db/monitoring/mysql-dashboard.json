@@ -1,0 +1,194 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "MySQL Database Monitoring",
+    "tags": ["mysql", "database", "percona"],
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "MySQL Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "mysql_up",
+            "legendFormat": "MySQL Up"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "DOWN",
+                    "color": "red"
+                  },
+                  "1": {
+                    "text": "UP",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              }
+            ]
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Connections",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "mysql_global_status_threads_connected",
+            "legendFormat": "Connected Threads"
+          },
+          {
+            "expr": "mysql_global_status_threads_running",
+            "legendFormat": "Running Threads"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 4,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Query Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(mysql_global_status_questions[5m])",
+            "legendFormat": "Questions/sec"
+          },
+          {
+            "expr": "rate(mysql_global_status_queries[5m])",
+            "legendFormat": "Queries/sec"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 4,
+        "title": "InnoDB Buffer Pool",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "mysql_global_status_innodb_buffer_pool_pages_total",
+            "legendFormat": "Total Pages"
+          },
+          {
+            "expr": "mysql_global_status_innodb_buffer_pool_pages_free",
+            "legendFormat": "Free Pages"
+          },
+          {
+            "expr": "mysql_global_status_innodb_buffer_pool_pages_dirty",
+            "legendFormat": "Dirty Pages"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 5,
+        "title": "Slow Queries",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "mysql_global_status_slow_queries",
+            "legendFormat": "Slow Queries"
+          }
+        ],
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": 6,
+        "title": "Table Locks",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(mysql_global_status_table_locks_immediate[5m])",
+            "legendFormat": "Immediate Locks/sec"
+          },
+          {
+            "expr": "rate(mysql_global_status_table_locks_waited[5m])",
+            "legendFormat": "Waited Locks/sec"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": 7,
+        "title": "Galera Cluster Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "mysql_global_status_wsrep_cluster_size",
+            "legendFormat": "Cluster Size"
+          },
+          {
+            "expr": "mysql_global_status_wsrep_local_state",
+            "legendFormat": "Local State"
+          }
+        ],
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 8,
+          "y": 16
+        }
+      },
+      {
+        "id": 8,
+        "title": "Binary Log Position",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "mysql_global_status_binlog_cache_use",
+            "legendFormat": "Binlog Cache Use"
+          }
+        ],
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 16,
+          "y": 16
+        }
+      }
+    ]
+  }
+}

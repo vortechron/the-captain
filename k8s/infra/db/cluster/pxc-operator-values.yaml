@@ -1,0 +1,47 @@
+# Percona Operator for MySQL values
+# Minimal configuration for production deployment
+
+# Resource limits for operator
+resources:
+  limits:
+    cpu: 200m
+    memory: 500Mi
+  requests:
+    cpu: 100m
+    memory: 200Mi
+
+# Enable RBAC
+rbac:
+  useClusterWideAccess: false
+
+# Operator configuration
+operator:
+  # Run operator in single namespace mode
+  watchNamespace: "db"
+  
+# Enable leader election for HA
+leaderElection: true
+
+# Logging level
+logLevel: INFO
+
+# Node selection (commented examples)
+# nodeSelector:
+#   node-pool: database
+# tolerations:
+#   - key: "database"
+#     operator: "Equal"
+#     value: "true"
+#     effect: "NoSchedule"
+
+# Affinity rules (commented examples)
+# affinity:
+#   nodeAffinity:
+#     preferredDuringSchedulingIgnoredDuringExecution:
+#     - weight: 100
+#       preference:
+#         matchExpressions:
+#         - key: node-pool
+#           operator: In
+#           values:
+#           - database

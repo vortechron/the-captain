@@ -1,0 +1,38 @@
+# Enable backup configuration for existing cluster
+apiVersion: pxc.percona.com/v1
+kind: PerconaXtraDBCluster
+metadata:
+  name: cluster1-pxc-db
+  namespace: db
+spec:
+  # Keep existing configuration and add backup
+  backup:
+    enabled: true
+    image:
+      repository: percona/percona-xtrabackup
+      tag: 8.0.35-33.1
+    
+    # MinIO storage configuration  
+    storages:
+      minio-storage:
+        type: s3
+        s3:
+          bucket: db-backup
+          region: us-east-1
+          endpointUrl: https://minio.terapeas.com
+          credentialsSecret: minio-backup-secret
+          # Use path-style access for MinIO compatibility
+          forcePathStyle: true
+    
+    # Optional: Enable scheduled backups
+    schedule:
+      - name: daily-backup
+        schedule: "0 2 * * *"
+        keep: 7
+        storageName: minio-storage
+        
+    # Optional: Enable PITR
+    pitr:
+      enabled: true
+      storageName: minio-storage
+      timeBetweenUploads: 60

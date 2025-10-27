@@ -1,0 +1,136 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-exporter-secret
+  namespace: db
+type: Opaque
+stringData:
+  # MySQL user for monitoring (will be created)
+  MYSQL_USER: "exporter"
+  MYSQL_PASSWORD: "exporterpassword123"
+  # Connection string for the exporter
+  DATA_SOURCE_NAME: "exporter:exporterpassword123@(cluster1-pxc-db-haproxy.db.svc.cluster.local:3306)/"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-exporter-config
+  namespace: db
+data:
+  .my.cnf: |
+    [client]
+    user=exporter
+    password=exporterpassword123
+    host=cluster1-pxc-db-haproxy.db.svc.cluster.local
+    port=3306
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-exporter
+  namespace: db
+  labels:
+    app: mysql-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-exporter
+  template:
+    metadata:
+      labels:
+        app: mysql-exporter
+    spec:
+      containers:
+      - name: mysql-exporter
+        image: prom/mysqld-exporter:v0.15.1
+        ports:
+        - containerPort: 9104
+          name: metrics
+        env:
+        - name: DATA_SOURCE_NAME
+          valueFrom:
+            secretKeyRef:
+              name: mysql-exporter-secret
+              key: DATA_SOURCE_NAME
+        - name: MYSQLD_EXPORTER_WEB_LISTEN_ADDRESS
+          value: ":9104"
+        - name: MYSQL_PWD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-exporter-secret
+              key: MYSQL_PASSWORD
+        # Enable additional collectors for detailed metrics
+        - name: MYSQLD_EXPORTER_COLLECT_GLOBAL_STATUS
+          value: "true"
+        - name: MYSQLD_EXPORTER_COLLECT_GLOBAL_VARIABLES
+          value: "true"
+        - name: MYSQLD_EXPORTER_COLLECT_SLAVE_STATUS
+          value: "true"
+        - name: MYSQLD_EXPORTER_COLLECT_INFO_SCHEMA_INNODB_METRICS
+          value: "true"
+        - name: MYSQLD_EXPORTER_COLLECT_INFO_SCHEMA_INNODB_TABLESPACES
+          value: "true"
+        - name: MYSQLD_EXPORTER_COLLECT_INFO_SCHEMA_INNODB_CMP
+          value: "true"
+        - name: MYSQLD_EXPORTER_COLLECT_INFO_SCHEMA_INNODB_CMPMEM
+          value: "true"
+        - name: MYSQLD_EXPORTER_COLLECT_PERF_SCHEMA_TABLELOCKS
+          value: "true"
+        - name: MYSQLD_EXPORTER_COLLECT_PERF_SCHEMA_EVENTSWAITS
+          value: "true"
+        - name: MYSQLD_EXPORTER_COLLECT_PERF_SCHEMA_INDEXIOWAITS
+          value: "true"
+        - name: MYSQLD_EXPORTER_COLLECT_PERF_SCHEMA_TABLEIOWAITS
+          value: "true"
+        volumeMounts:
+        - name: mysql-config
+          mountPath: /.my.cnf
+          subPath: .my.cnf
+          readOnly: true
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 9104
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 9104
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      volumes:
+      - name: mysql-config
+        configMap:
+          name: mysql-exporter-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-exporter
+  namespace: db
+  labels:
+    app: mysql-exporter
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9104"
+    prometheus.io/path: "/metrics"
+spec:
+  selector:
+    app: mysql-exporter
+  ports:
+  - name: metrics
+    port: 9104
+    targetPort: 9104
+    protocol: TCP
