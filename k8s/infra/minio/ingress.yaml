@@ -1,0 +1,38 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio-ingress
+  namespace: minio
+  annotations:
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"  # Commented out - using issuer instead
+    cert-manager.io/issuer: "letsencrypt-prod"
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  # ingressClassName: "traefik"  # Commented out for potential future use
+  ingressClassName: "nginx"
+  tls:
+  - hosts:
+    - minio.terapeas.com
+    - minio-console.terapeas.com
+    secretName: minio-tls
+  rules:
+  - host: minio.terapeas.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: minio-service
+            port:
+              number: 9000
+  - host: minio-console.terapeas.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: minio-console
+            port:
+              number: 9001

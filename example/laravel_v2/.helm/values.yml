@@ -1,0 +1,670 @@
+# Default values for larakube.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# -- The Docker image repository to use for the Laravel application.
+image:
+  repository: "asia-southeast1-docker.pkg.dev/vortechron/chai/app"
+
+  # -- The policy for pulling the Docker image (e.g., IfNotPresent, Always).
+  pullPolicy: Always
+
+  # -- Overrides the image tag whose default is the chart appVersion.
+  tag: "1.0.0"
+
+# -- List of secrets to use for pulling the Docker image.
+imagePullSecrets: 
+  - name: gcp-artifact-registry-secret
+
+# -- Overrides the name of the chart.
+nameOverride: ""
+
+# -- Overrides the full name of the chart.
+fullnameOverride: ""
+
+# -- Service account configuration.
+serviceAccount:
+
+  # -- Specifies whether a service account should be created.
+  create: true
+
+  # -- Automatically mount a ServiceAccount's API credentials?
+  automount: true
+
+  # -- Annotations to add to the service account.
+  annotations: {}
+
+  # -- The name of the service account to use. If not set and create is true, a name is generated using the fullname template.
+  name: ""
+
+# -- Annotations to add to the pod.
+podAnnotations: {}
+
+# -- Labels to add to the pod.
+podLabels: {}
+
+# -- Security context for the pod.
+podSecurityContext:
+  fsGroup: 33
+
+# -- Security context for the container.
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+# runAsUser: 1000
+
+# -- Service configuration.
+service:
+
+  # -- The type of service (e.g., ClusterIP, NodePort, LoadBalancer).
+  type: ClusterIP
+
+  # -- The port on which the service will be exposed.
+  port: 80
+
+  # -- The port on which the container will listen.
+  containerPort: 80
+
+# -- Ingress configuration.
+ingress:
+
+  # -- Enable or disable the ingress resource.
+  enabled: true
+
+  # -- The ingress class name.
+  className: "traefik"
+
+  # -- Annotations to add to the ingress resource.
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+
+  # -- The hostname to use for the ingress.
+  hosts:
+    - host: chai.vortechron.com
+
+      # -- The path to use for the ingress.
+      paths:
+        - path: /
+
+          # -- The type of path (e.g., ImplementationSpecific, Exact, Prefix).
+          pathType: ImplementationSpecific
+
+  # -- TLS configuration for the ingress.
+  tls:
+    - secretName: chai-app-tls
+      hosts:
+        - chai.vortechron.com
+
+# -- Additional volumes on the output Deployment definition.
+volumes:
+  - name: chai-storage
+    persistentVolumeClaim:
+      claimName: chai-storage
+  # - name: chai-vonage-private-key
+  #   secret:
+  #     secretName: chai-vonage-private-key
+
+# -- Additional volumeMounts on the output Deployment definition.
+volumeMounts:
+  - name: chai-storage
+    mountPath: /var/www/html/storage
+    subPath: app/public
+  - name: chai-storage
+    mountPath: /var/www/html/storage/framework
+    subPath: framework
+  - name: chai-storage
+    mountPath: /var/www/html/storage/framework/cache
+    subPath: framework/cache
+  - name: chai-storage
+    mountPath: /var/www/html/storage/framework/sessions
+    subPath: framework/sessions
+  - name: chai-storage
+    mountPath: /var/www/html/storage/framework/views
+    subPath: framework/views
+  - name: chai-storage
+    mountPath: /var/www/html/storage/logs
+    subPath: logs
+  - name: chai-storage
+    mountPath: /var/www/html/storage/media-library/temp
+    subPath: temp
+  # - name: chai-vonage-private-key
+  #   mountPath: /var/www/html/storage/app/vonage.key
+  #   subPath: vonage.key
+
+# -- Node selector for scheduling the pod.
+nodeSelector: {}
+
+# -- Tolerations for scheduling the pod.
+tolerations: []
+
+# -- Affinity rules for scheduling the pod.
+affinity: {}
+
+# -- Topology spread constraints for scheduling the pod.
+topologySpreadConstraints: []
+
+# -- The number of old ReplicaSets to retain.
+revisionHistoryLimit: 2
+
+# -- Environment variables to set in the container.
+env: {}
+
+# -- Web deployment configuration.
+web:
+
+  # -- Environment variables specific to the web container.
+  env: {}
+
+  command:
+    - /bin/sh
+    - -c
+    - "php artisan optimize && node bootstrap/ssr/ssr.js & php artisan octane:start --server=swoole --host=0.0.0.0 --port=80 --workers=4 --task-workers=2"
+
+  # -- The number of replicas for the web deployment.
+  replicaCount: 1
+
+  # -- Autoscaling configuration for the web deployment.
+  autoscaling:
+
+    # -- Enable or disable autoscaling for the web deployment.
+    enabled: false
+
+    # -- The minimum number of replicas for autoscaling.
+    minReplicas: 1
+
+    # -- The maximum number of replicas for autoscaling.
+    maxReplicas: 2
+
+    # -- The target CPU utilization percentage for autoscaling.
+    targetCPUUtilizationPercentage: 60
+    # targetMemoryUtilizationPercentage: 80
+
+  # -- Resource requests and limits for the web container.
+  resources:
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    limits:
+      cpu: 600m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+
+  # -- Update strategy for the web deployment.
+  updateStrategy:
+
+    # -- The update strategy for the web deployment (e.g., RollingUpdate, Recreate).
+    type: RollingUpdate
+
+    # -- Rolling update configuration.
+    rollingUpdate:
+
+      # -- The maximum number of pods that can be created above the desired number of pods during an update.
+      maxSurge: 2
+
+      # -- The maximum number of pods that can be unavailable during an update.
+      maxUnavailable: 1
+
+  # -- Liveness probe configuration for the web container.
+  # livenessProbe:
+  #   httpGet:
+  #     path: /health
+  #     port: 80
+  #   initialDelaySeconds: 30
+  #   periodSeconds: 10
+  #   timeoutSeconds: 5
+  #   failureThreshold: 3
+
+  # # -- Readiness probe configuration for the web container.
+  # readinessProbe:
+  #   httpGet:
+  #     path: /health
+  #     port: 80
+  #   initialDelaySeconds: 5
+  #   periodSeconds: 5
+  #   timeoutSeconds: 3
+  #   failureThreshold: 3
+
+  # # -- Startup probe configuration for the web container.
+  # startupProbe:
+  #   httpGet:
+  #     path: /health
+  #     port: 80
+  #   initialDelaySeconds: 10
+  #   periodSeconds: 10
+  #   timeoutSeconds: 5
+  #   failureThreshold: 30
+
+  # -- PodDisruptionBudget configuration for the web deployment.
+  pdb:
+
+    # -- Enable or disable the PodDisruptionBudget for the web deployment.
+    enabled: true
+
+    # -- The maximum number of pods that can be unavailable during a disruption.
+    #minAvailable: 1
+    maxUnavailable: 1
+
+  # -- Tolerations for the web deployment.
+  tolerations: []
+
+  # -- Affinity rules for the web deployment.
+  affinity: {}
+
+  # -- Topology spread constraints for the web deployment.
+  topologySpreadConstraints: []
+
+  # -- Cert-Manager configuration for managing TLS certificates.
+  certManager:
+
+    # -- Enable or disable Cert-Manager.
+    enabled: false
+
+    # -- The issuer to use for Cert-Manager.
+    issuer: ""
+
+    # -- The domains to use for Cert-Manager.
+    domains: []
+
+  # -- Traefik ingress configuration.
+  traefik:
+
+    # -- Enable or disable Traefik ingress.
+    enabled: false
+
+    # -- Enable or disable compression for Traefik.
+    compress: true
+
+    # -- The domain to use for Traefik.
+    domain: ""
+
+    # -- Extra middlewares to use for Traefik.
+    extraMiddlewares: []
+
+    # -- Custom request headers to use for Traefik.
+    customRequestHeaders: {}
+
+    # -- Custom response headers to use for Traefik.
+    customResponseHeaders: {}
+
+    # -- Configuration for basic authentication
+    basicAuth:
+      # -- Enable or disable basic authentication for Traefik.
+      enabled: false
+      # -- Name of the secret that contains the user credentials. See https://doc.traefik.io/traefik/middlewares/http/basicauth/#users for more info
+      secret: ""
+      # -- Basic auth realm (f.e. name of the site that you are restricting access to)
+      realm: ""
+
+    # @schema
+    # type: array
+    # items:
+    #   type: object
+    #   properties:
+    #     domain:
+    #       type: string
+    # @schema
+    # -- Domains that redirect to the main domain (f.e. redirect www to non-www)
+    # Please keep in mind that the certificate need include this domain as well.
+    # Example:
+    #  - domain: www.some-site.test
+    domainRedirects: []
+websocket:
+  # -- Enable or disable the WebSocket server.
+  enabled: false
+
+  # -- Ingress configuration for WebSocket connections.
+  ingress:
+    # -- Enable or disable the WebSocket ingress.
+    enabled: true
+    # -- The ingress class name.
+    className: "traefik"
+
+    # -- Annotations to add to the ingress resource.
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+      nginx.ingress.kubernetes.io/connection-proxy-header: "upgrade"
+      nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+    # -- The hostname for WebSocket connections.
+    hosts:
+      - host: ws.chai.vortechron.com
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    # -- TLS configuration for WebSocket ingress.
+    tls:
+      - secretName: chai-ws-tls
+        hosts:
+          - ws.chai.vortechron.com
+  # -- Scaling configuration for horizontal scaling with Redis.
+  scaling:
+    # -- Enable horizontal scaling with Redis pub/sub.
+    enabled: false
+
+nginx:
+  # -- Enable or disable the Nginx deployment and service.
+  enabled: false
+  
+  # -- The number of replicas for the Nginx deployment.
+  replicaCount: 1
+  
+  # -- The image repository for Nginx.
+  image:
+    repository: "asia-southeast1-docker.pkg.dev/vortechron/chai/nginx"
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+  
+  # -- Service configuration for Nginx.
+  service:
+    type: ClusterIP
+    port: 80
+    annotations: {}
+  
+  # -- Resource requests and limits for the Nginx container.
+  resources: {}
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+  
+  # -- Configuration for Nginx.
+  config:
+    # -- Custom Nginx configuration for the reverse proxy.
+    custom: |
+      server {
+        listen 80;
+        server_name ayemhomestay.com;
+        index index.php;
+        root /var/www/html/public;
+
+        location ~\.php {
+            try_files $uri =404;
+            include /etc/nginx/fastcgi_params;
+            fastcgi_pass {{ include "larakube.fullname" . }}-web:{{ .Values.service.containerPort }};
+            fastcgi_index index.php;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        }
+
+        location /health {
+          access_log off;
+          allow 127.0.0.1;
+          deny all;
+          return 200 "OK";
+        }
+      }
+  
+  # -- Liveness probe configuration for the Nginx container.
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 80
+    initialDelaySeconds: 30
+    timeoutSeconds: 5
+  
+  # # -- Readiness probe configuration for the Nginx container.
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 80
+    initialDelaySeconds: 5
+    timeoutSeconds: 3
+
+# -- Worker deployment configuration.
+worker:
+  default:
+    enabled: false
+
+    command:
+      - /bin/sh
+      - -c
+      - "php artisan queue:work --no-interaction --tries=3 --timeout=60"
+      
+    # -- The number of replicas for the worker deployment.
+    replicaCount: 1
+
+    # -- Autoscaling configuration for the worker deployment.
+    autoscaling:
+
+      # -- Enable or disable autoscaling for the worker deployment.
+      enabled: true
+
+      # -- The minimum number of replicas for autoscaling.
+      minReplicas: 1
+
+      # -- The maximum number of replicas for autoscaling.
+      maxReplicas: 10
+
+      # -- The target CPU utilization percentage for autoscaling.
+      targetCPUUtilizationPercentage: 80
+      # targetMemoryUtilizationPercentage: 80
+
+    # -- Environment variables specific to the worker container.
+    env: { }
+
+    # -- Resource requests and limits for the worker container.
+    resources:
+      # We usually recommend not to specify default resources and to leave this as a conscious
+      # choice for the user. This also increases chances charts run on environments with little
+      # resources, such as Minikube. If you do want to specify resources, uncomment the following
+      # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+      limits:
+        cpu: 400m
+        memory: 384Mi
+      requests:
+        cpu: 150m
+        memory: 192Mi
+
+    # -- Update strategy for the worker deployment.
+    updateStrategy:
+
+      # -- The update strategy for the worker deployment (e.g., RollingUpdate, Recreate).
+      type: Recreate
+
+    # -- Liveness probe configuration for the worker container.
+    livenessProbe: {}
+
+    # -- Readiness probe configuration for the worker container.
+    readinessProbe: {}
+
+    # -- Startup probe configuration for the worker container.
+    startupProbe: {}
+
+    # -- PodDisruptionBudget configuration for the worker deployment.
+    pdb:
+
+      # -- Enable or disable the PodDisruptionBudget for the worker deployment.
+      enabled: false
+
+      # -- The maximum number of pods that can be unavailable during a disruption.
+      #minAvailable: 1
+      maxUnavailable: 0
+
+  websocket:
+    # -- Enable or disable the WebSocket worker.
+    enabled: false
+
+    # -- The number of replicas for the WebSocket worker deployment.
+    replicaCount: 1
+
+    # -- Command to start the WebSocket server.
+    command:
+      - php
+      - artisan
+      - reverb:start
+      - --debug
+
+    env: {}
+
+    # -- Container port for WebSocket server.
+    containerPort: 6001
+
+        # -- Port name for the container port.
+    portName: "websocket"
+
+    # -- Protocol for the container port.
+    protocol: "TCP"
+
+    # -- Service configuration for the WebSocket worker.
+    service:
+      # -- Service type.
+      type: ClusterIP
+      # -- Service port.
+      port: 8080
+      # -- Service protocol.
+      protocol: "TCP"
+      # -- Service port name.
+      name: "websocket"
+      # -- Service annotations.
+      annotations: {}
+
+    # -- Autoscaling configuration for the WebSocket worker.
+    autoscaling:
+      # -- Enable or disable autoscaling for the WebSocket worker.
+      enabled: false
+      # -- The minimum number of replicas for autoscaling.
+      minReplicas: 1
+      # -- The maximum number of replicas for autoscaling.
+      maxReplicas: 10
+      # -- The target CPU utilization percentage for autoscaling.
+      targetCPUUtilizationPercentage: 80
+
+    # -- Resource requests and limits for the WebSocket worker.
+    resources: {}
+      # limits:
+      #   cpu: 500m
+      #   memory: 512Mi
+      # requests:
+      #   cpu: 250m
+      #   memory: 256Mi
+
+    # -- Update strategy for the WebSocket worker.
+    updateStrategy:
+      # -- The update strategy type (RollingUpdate recommended for WebSocket).
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+
+    # -- Liveness probe configuration for the WebSocket worker.
+    livenessProbe:
+      tcpSocket:
+        port: 6001
+      initialDelaySeconds: 30
+      periodSeconds: 10
+
+    # -- Readiness probe configuration for the WebSocket worker.
+    readinessProbe:
+      tcpSocket:
+        port: 6001
+      initialDelaySeconds: 5
+      periodSeconds: 5
+
+    # -- PodDisruptionBudget configuration for the WebSocket worker.
+    pdb:
+      # -- Enable or disable the PodDisruptionBudget for the WebSocket worker.
+      enabled: false
+      # -- The maximum number of pods that can be unavailable during a disruption.
+      maxUnavailable: 0
+
+# -- Scheduler configuration.
+scheduler:
+
+  # -- Enable or disable the scheduler.
+  enabled: true
+
+  # -- The schedule for the scheduler (e.g., every minute).
+  schedule: "* * * * *"
+
+  # -- The command to run the scheduler.
+  command:
+    - /bin/sh
+    - -c
+    - php artisan schedule:run
+
+  # -- Environment variables specific to the scheduler container.
+  env: { }
+
+  # -- Resource requests and limits for the scheduler container.
+  resources: 
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+# -- Database migration configuration.
+databaseMigration:
+
+  # -- Enable or disable database migrations.
+  enabled: true
+
+  # -- The number of times to retry the database migration.
+  retry: 0
+
+  # -- Environment variables specific to the database migration container.
+  env: { }
+
+  # -- Resource requests and limits for the database migration container.
+  resources:
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    # limits:
+    #   cpu: 250m
+    #   memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+secretEnvs:
+  - name: DB_PASSWORD
+    secretName: chai-secrets
+    secretKey: db-password
+  - name: MAIL_PASSWORD
+    secretName: chai-secrets
+    secretKey: mail-password
+  - name: GOOGLE_CLIENT_SECRET
+    secretName: chai-secrets
+    secretKey: google-client-secret
+  - name: STRIPE_SECRET
+    secretName: chai-secrets
+    secretKey: stripe-secret
+  - name: OPENAI_API_KEY
+    secretName: chai-secrets
+    secretKey: openai-api-key
+  - name: ANTHROPIC_API_KEY
+    secretName: chai-secrets
+    secretKey: anthropic-api-key
+  - name: DEEPSEEK_API_KEY
+    secretName: chai-secrets
+    secretKey: deepseek-api-key
+  - name: GROK_API_KEY
+    secretName: chai-secrets
+    secretKey: grok-api-key
+  - name: GEMINI_API_KEY
+    secretName: chai-secrets
+    secretKey: gemini-api-key
+  - name: MINIO_ACCESS_KEY_ID
+    secretName: chai-secrets
+    secretKey: minio-access-key-id
+  - name: MINIO_SECRET_ACCESS_KEY
+    secretName: chai-secrets
+    secretKey: minio-secret-access-key

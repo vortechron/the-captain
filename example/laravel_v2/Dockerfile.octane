@@ -1,0 +1,50 @@
+FROM node:20-alpine as assets
+
+COPY . /var/www/html
+
+WORKDIR /var/www/html
+
+# RUN npm install && npm run build:ssr
+RUN npm install && npm run build
+
+FROM asia-southeast1-docker.pkg.dev/vortechron/base/octane:1.0.0-8.3-fpm-alpine
+
+# Install Node.js and dependencies required for SOAP extension and SSR
+RUN apk add --no-cache \
+    # nodejs \
+    # npm \
+    libxml2-dev \
+    autoconf \
+    g++ \
+    make \
+    && docker-php-ext-install soap \
+    && apk del autoconf g++ make
+
+# PHP performance optimizations for Swoole
+# RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
+#     && echo "opcache.memory_consumption=256" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
+#     && echo "opcache.max_accelerated_files=20000" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
+#     && echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
+#     && echo "memory_limit=512M" >> /usr/local/etc/php/conf.d/memory.ini \
+#     && echo "max_execution_time=60" >> /usr/local/etc/php/conf.d/execution.ini
+
+COPY . /var/www/html
+
+COPY --from=assets /var/www/html/public/build /var/www/html/public/build
+# COPY --from=assets /var/www/html/bootstrap/ssr /var/www/html/bootstrap/ssr
+# COPY --from=assets /var/www/html/node_modules /var/www/html/node_modules
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN rm -f /var/www/html/public/hot
+
+RUN mkdir -p /var/www/html/storage/logs/ && \
+    chown -R www-data:www-data /var/www/html && \
+    rm -rf tests/ .git/ .github/ *.md vendor/ && \
+    composer install --no-dev --no-interaction --optimize-autoloader && \
+    rm -rf vendor/*/test/ vendor/*/tests/*
+
+WORKDIR /var/www/html
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+
+EXPOSE 80

@@ -1,0 +1,119 @@
+name: Deploy to Production
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker image tag to deploy'
+        required: true
+        default: '1.0.0'
+
+env:
+  GCP_REGION: asia-southeast1
+  GCP_PROJECT: vortechron
+  GCP_REPO: chai
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Configure Docker for GCP
+      run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+
+    - name: Set image tag
+      run: |
+        if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref_type }}" = "tag" ]; then
+          echo "IMAGE_TAG=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+        else
+          echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
+        fi
+
+    - name: Build and push Docker image
+      run: |
+        echo "🔨 Building APP image with tag: $IMAGE_TAG"
+        docker build \
+          --platform linux/amd64 \
+          -f Dockerfile.octane \
+          --build-arg SSH_PRIVATE_KEY="${{ secrets.SSH_PRIVATE_KEY }}" \
+          -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.GCP_REPO }}/app:$IMAGE_TAG \
+          .
+        
+        echo "⬆️ Pushing image..."
+        docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.GCP_REPO }}/app:$IMAGE_TAG
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+
+    - name: Configure kubectl
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+
+    - name: Apply Kubernetes resources
+      run: |
+        echo "🔑 Applying secrets and storage..."
+        kubectl apply -f .helm/storage.yml
+        
+        # Create configmap from production env
+        kubectl create configmap chai-app-larakube-env \
+          --from-env-file=.env.production.example \
+          --dry-run=client -o yaml | \
+          kubectl label --local -f - app.kubernetes.io/managed-by=Helm -o yaml | \
+          kubectl annotate --local -f - meta.helm.sh/release-name=chai-app -o yaml | \
+          kubectl annotate --local -f - meta.helm.sh/release-namespace=default -o yaml | \
+          kubectl apply -f -
+        
+        # Create secrets
+        kubectl create secret generic chai-secrets \
+          --from-literal=db-password="${{ secrets.DB_PASSWORD }}" \
+          --from-literal=mail-password="${{ secrets.MAIL_PASSWORD }}" \
+          --from-literal=google-client-secret="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+          --from-literal=stripe-secret="${{ secrets.STRIPE_SECRET }}" \
+          --from-literal=openai-api-key="${{ secrets.OPENAI_API_KEY }}" \
+          --from-literal=anthropic-api-key="${{ secrets.ANTHROPIC_API_KEY }}" \
+          --from-literal=deepseek-api-key="${{ secrets.DEEPSEEK_API_KEY }}" \
+          --from-literal=grok-api-key="${{ secrets.GROK_API_KEY }}" \
+          --from-literal=gemini-api-key="${{ secrets.GEMINI_API_KEY }}" \
+          --from-literal=minio-access-key-id="${{ secrets.MINIO_ACCESS_KEY_ID }}" \
+          --from-literal=minio-secret-access-key="${{ secrets.MINIO_SECRET_ACCESS_KEY }}" \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Set up Helm
+      uses: azure/setup-helm@v3
+
+    - name: Add Helm repository
+      run: |
+        helm repo add the-captain ${{ secrets.HELM_REPO_URL }}
+        helm repo update
+
+    - name: Deploy with Helm
+      run: |
+        echo "🚢 Deploying APP with tag: $IMAGE_TAG"
+        helm upgrade ${{ env.GCP_REPO }}-app \
+          -f .helm/values.yml \
+          --set image.tag=$IMAGE_TAG \
+          --install \
+          the-captain/larakube
+
+    - name: Verify deployment
+      run: |
+        echo "✅ Deployment completed successfully!"
+        echo "🔍 Checking pod status..."
+        kubectl get pods
+        kubectl rollout status deployment/${{ env.GCP_REPO }}-app-larakube-web --timeout=300s

@@ -35,7 +35,7 @@
 
   // add iam policy binding so that cicd can push image to artifact registry
    ```bash
-   gcloud artifacts repositories add-iam-policy-binding draw \
+   gcloud artifacts repositories add-iam-policy-binding algo \
     --location=asia-southeast1 \
     --project=vortechron \
     --member=serviceAccount:do-image-puller@vortechron.iam.gserviceaccount.com \
