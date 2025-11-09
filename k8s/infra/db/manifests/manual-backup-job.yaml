@@ -1,0 +1,165 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: manual-mysql-backup
+  namespace: db
+  labels:
+    app: mysql-backup
+    type: manual
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 86400  # Keep job for 24 hours after completion
+  template:
+    metadata:
+      labels:
+        app: mysql-backup
+    spec:
+      restartPolicy: Never
+      serviceAccountName: default
+      initContainers:
+      # Copy backup scripts from PXC pod
+      - name: prepare-backup
+        image: percona/percona-xtradb-cluster:8.0.35-27.1
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "Preparing backup environment..."
+
+          # Create backup directory
+          mkdir -p /backup
+
+          # Test MySQL connectivity
+          mysql -h cluster1-pxc-db-pxc-0.cluster1-pxc-db-pxc \
+                -u xtrabackup \
+                -p"${XTRABACKUP_PASSWORD}" \
+                -e "SELECT 1" || {
+            echo "ERROR: Cannot connect to MySQL cluster"
+            exit 1
+          }
+
+          echo "Backup preparation complete"
+        env:
+        - name: XTRABACKUP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cluster1-pxc-db-secrets
+              key: xtrabackup
+        volumeMounts:
+        - name: backup-dir
+          mountPath: /backup
+
+      containers:
+      - name: xtrabackup
+        image: percona/percona-xtrabackup:8.0.35-33.1
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -exo pipefail
+
+          BACKUP_NAME="manual-backup-$(date +%Y%m%d-%H%M%S)"
+          S3_PATH="${MINIO_BUCKET}/${BACKUP_NAME}"
+
+          echo "========================================="
+          echo "Starting MySQL Backup"
+          echo "========================================="
+          echo "Backup name: ${BACKUP_NAME}"
+          echo "S3 destination: s3://${S3_PATH}"
+          echo "MinIO endpoint: ${MINIO_ENDPOINT}"
+          echo ""
+
+          # Configure AWS CLI for MinIO (using /tmp for permissions)
+          export HOME=/tmp
+          mkdir -p /tmp/.aws
+          cat > /tmp/.aws/credentials <<EOF
+          [default]
+          aws_access_key_id = ${AWS_ACCESS_KEY_ID}
+          aws_secret_access_key = ${AWS_SECRET_ACCESS_KEY}
+          EOF
+
+          cat > /tmp/.aws/config <<EOF
+          [default]
+          region = ${MINIO_REGION}
+          EOF
+
+          # Perform streaming backup directly to MinIO
+          echo "Executing xtrabackup..."
+          xtrabackup --backup \
+            --host=cluster1-pxc-db-haproxy.db \
+            --port=3306 \
+            --user=xtrabackup \
+            --password="${XTRABACKUP_PASSWORD}" \
+            --stream=xbstream \
+            --parallel=4 \
+            --compress \
+            --compress-threads=4 | \
+          xbcloud put \
+            --storage=s3 \
+            --s3-endpoint="${MINIO_ENDPOINT}" \
+            --s3-bucket="${MINIO_BUCKET}" \
+            --parallel=4 \
+            "${BACKUP_NAME}"
+
+          if [ $? -eq 0 ]; then
+            echo ""
+            echo "========================================="
+            echo "✅ Backup completed successfully!"
+            echo "========================================="
+            echo "Backup location: s3://${S3_PATH}"
+            echo "Timestamp: $(date)"
+
+            # Create a marker file with backup metadata
+            echo "{\"backup_name\":\"${BACKUP_NAME}\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"status\":\"success\"}" > /tmp/backup-metadata.json
+
+            # Upload metadata
+            aws s3 cp /tmp/backup-metadata.json \
+              "s3://${MINIO_BUCKET}/${BACKUP_NAME}.metadata.json" \
+              --endpoint-url="${MINIO_ENDPOINT}"
+
+            exit 0
+          else
+            echo ""
+            echo "========================================="
+            echo "❌ Backup failed!"
+            echo "========================================="
+            exit 1
+          fi
+        env:
+        - name: XTRABACKUP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cluster1-pxc-db-secrets
+              key: xtrabackup
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: minio-backup-secret
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-backup-secret
+              key: AWS_SECRET_ACCESS_KEY
+        - name: MINIO_ENDPOINT
+          value: "https://minio.aks.terapeas.com"
+        - name: MINIO_BUCKET
+          value: "db-backup"
+        - name: MINIO_REGION
+          value: "us-east-1"
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+        volumeMounts:
+        - name: backup-dir
+          mountPath: /backup
+
+      volumes:
+      - name: backup-dir
+        emptyDir:
+          sizeLimit: 10Gi

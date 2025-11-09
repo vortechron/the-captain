@@ -130,6 +130,36 @@ variable "backup_retention_days" {
   default     = 7
 }
 
+variable "backup_resources" {
+  description = "Resource requests and limits for backup jobs"
+  type = object({
+    requests = object({
+      cpu    = string
+      memory = string
+    })
+    limits = object({
+      cpu    = string
+      memory = string
+    })
+  })
+  default = {
+    requests = {
+      cpu    = "200m"
+      memory = "512Mi"
+    }
+    limits = {
+      cpu    = "1000m"
+      memory = "2Gi"
+    }
+  }
+}
+
+variable "backup_timeout_seconds" {
+  description = "Timeout in seconds for backup operations"
+  type        = number
+  default     = 7200 # 2 hours (increased to handle Galera connection timeouts)
+}
+
 variable "minio_endpoint_url" {
   description = "MinIO S3 endpoint URL"
   type        = string
