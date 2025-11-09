@@ -1,0 +1,99 @@
+# Azure Subscription Configuration
+subscription_id = "your-azure-subscription-id"
+
+# Resource Group Configuration
+resource_group_name = "aks-cluster-rg"
+location            = "southeastasia"  # Malaysia region
+environment         = "prod"
+
+# AKS Configuration
+aks_cluster_name = "aks-cluster"
+aks_node_count   = 1
+aks_vm_size      = "Standard_D2s_v3"  # 2 vCPU, 8GB RAM
+kubernetes_version = ""  # Leave empty for latest, or specify like "1.28.0"
+
+# Additional Node Pool Configuration (D4 - 4 CPU)
+aks_d4_node_pool_enabled = true  # Enable additional node pool with 4 CPU
+aks_d4_node_pool_name    = "d4pool"  # Name of the D4 node pool
+aks_d4_vm_size           = "Standard_D4s_v3"  # 4 vCPU, 16GB RAM
+aks_d4_node_count        = 1  # Number of nodes in the D4 node pool
+
+# MinIO Configuration
+minio_enabled            = true
+minio_storage_class      = "managed-premium"  # Check available with: kubectl get storageclass
+minio_storage_size       = "20Gi"
+minio_domain             = "terapeas.com"
+minio_root_user          = "minioadmin"  # Change in production!
+minio_root_password       = "your-secure-password-here"  # Change in production!
+minio_cluster_issuer_name = "letsencrypt-prod"  # Use existing ClusterIssuer (recommended)
+minio_create_cluster_issuer = false  # Set to true only if ClusterIssuer doesn't exist
+minio_cert_manager_email    = "sayaamiruladli@gmail.com"  # Only used if creating ClusterIssuer
+
+# Ingress NGINX Configuration
+ingress_nginx_enabled = true  # Install NGINX Ingress Controller
+ingress_nginx_version = "4.8.3"  # Helm chart version
+
+# Grafana Configuration
+grafana_enabled                  = true  # Install Grafana
+grafana_domain                   = "terapeas.com"
+grafana_chart_version             = "9.2.7"  # Matching legacy setup
+grafana_cluster_issuer_name       = "letsencrypt-prod"  # Use existing ClusterIssuer
+grafana_storage_class             = "managed-premium"  # Check available with: kubectl get storageclass
+grafana_storage_size              = "10Gi"
+grafana_admin_user                = "admin"  # Default Grafana admin username
+grafana_admin_password            = ""  # Leave empty to auto-generate (recommended)
+grafana_loki_datasource_url       = ""  # Leave empty to auto-detect from Loki module
+grafana_prometheus_datasource_url = ""  # Leave empty to auto-detect from Prometheus module
+grafana_enable_loki_datasource    = true  # Enable Loki datasource provisioning
+grafana_enable_prometheus_datasource = true  # Enable Prometheus datasource provisioning
+
+# Loki Configuration
+loki_enabled         = true  # Install Loki for log aggregation
+loki_namespace       = "observability"
+loki_chart_version    = "6.30.1"  # Matching legacy setup
+loki_storage_class    = "managed-premium"  # Check available with: kubectl get storageclass
+loki_storage_size     = "3Gi"  # Cost-optimized from 10Gi
+loki_retention_period = "72h"  # 3 days retention
+
+# Promtail Configuration
+promtail_enabled      = true  # Install Promtail for log collection
+promtail_namespace    = "observability"
+promtail_chart_version = "6.15.4"  # Matching legacy setup
+promtail_loki_url     = ""  # Leave empty to auto-detect from Loki module
+
+# Prometheus Configuration
+prometheus_enabled              = true  # Install Prometheus for metrics
+prometheus_namespace            = "observability"
+prometheus_chart_version        = ""  # Leave empty for latest
+prometheus_storage_class        = "managed-premium"  # Check available with: kubectl get storageclass
+prometheus_storage_size         = "10Gi"
+prometheus_retention_time       = "7d"  # 7 days retention
+prometheus_enable_node_exporter = true  # Enable node-exporter
+prometheus_enable_kube_state_metrics = true  # Enable kube-state-metrics
+
+# MySQL Configuration
+mysql_enabled                = true  # Install MySQL (Percona XtraDB Cluster)
+mysql_namespace              = "db"
+mysql_cluster_name           = "cluster1"
+mysql_storage_class          = "managed-premium"  # Check available with: kubectl get storageclass
+mysql_storage_size           = "20Gi"  # Per node
+mysql_pxc_size               = 1  # Number of MySQL nodes (start with 1, scale to 3+ for HA)
+mysql_haproxy_size           = 1  # Number of HAProxy replicas
+mysql_backup_enabled         = true  # Enable automated backups to MinIO
+mysql_backup_schedule        = "0 2 * * *"  # Daily at 2 AM UTC
+mysql_backup_retention_days  = 7  # Keep 7 days of backups
+mysql_minio_endpoint_url     = "https://minio.aks.terapeas.com"  # MinIO endpoint for backups
+mysql_minio_bucket           = "db-backup"  # MinIO bucket name
+mysql_minio_access_key_id     = "minioadmin"  # MinIO access key (change in production!)
+mysql_minio_secret_access_key = "your-minio-secret-key"  # MinIO secret key (change in production!)
+mysql_root_password          = "jgab3IiennmI]OqS"  # MySQL root password
+mysql_monitoring_enabled     = true  # Enable MySQL monitoring with Prometheus exporter
+mysql_monitoring_user        = "exporter"  # MySQL monitoring user
+mysql_monitoring_password    = "exporterpassword123"  # MySQL monitoring user password
+
+# Helm Performance Optimization
+# Set to false for faster applies on stable charts (saves 2-5 minutes per apply)
+# ⚠️ Only disable if charts are already deployed and stable
+helm_wait_enabled        = true  # Wait for Helm releases to be ready (recommended: true for initial deployments)
+helm_wait_for_jobs_enabled = true  # Wait for Helm jobs to complete (recommended: true for initial deployments)
+helm_timeout             = 600  # Timeout in seconds for Helm operations (default: 600)

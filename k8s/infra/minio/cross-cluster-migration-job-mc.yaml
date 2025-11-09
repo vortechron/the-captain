@@ -1,0 +1,116 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-cross-cluster-migration
+  namespace: minio
+  labels:
+    app: minio-migration
+    migration-type: cross-cluster
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: minio-migration
+        migration-type: cross-cluster
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: mc-migration
+        image: minio/mc:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "=========================================="
+          echo "MinIO Cross-Cluster Migration"
+          echo "Source: $MINIO_SOURCE_ENDPOINT (READ-ONLY)"
+          echo "Target: http://minio-service.minio.svc.cluster.local:9000"
+          echo "=========================================="
+          echo ""
+
+          # Buckets to migrate
+          BUCKETS="db-backup terapeas terapeas-local"
+
+          # Verify source endpoint
+          if [ -z "$MINIO_SOURCE_ENDPOINT" ]; then
+            echo "ERROR: MINIO_SOURCE_ENDPOINT not set"
+            exit 1
+          fi
+
+          # Configure aliases
+          echo "Configuring MinIO aliases..."
+          mc alias set source "$MINIO_SOURCE_ENDPOINT" minioadmin 'Mpft0qBAEX2yIFXCqe/Ez5kAXZ89cabLEzI90jMtCRg=' --insecure || exit 1
+          mc alias set target http://minio-service.minio.svc.cluster.local:9000 minioadmin 'Mpft0qBAEX2yIFXCqe/Ez5kAXZ89cabLEzI90jMtCRg=' || exit 1
+          echo "✓ Aliases configured"
+          echo ""
+
+          # Test connections
+          echo "Testing source connection..."
+          if ! mc ls source/ --insecure > /dev/null 2>&1; then
+            echo "ERROR: Cannot connect to source"
+            echo "Debugging connection to $MINIO_SOURCE_ENDPOINT..."
+            mc ls source/ --insecure 2>&1 || true
+            mc admin info source --insecure 2>&1 || true
+            exit 1
+          fi
+          echo "✓ Source connection OK"
+
+          echo "Testing target connection..."
+          mc ls target/ > /dev/null 2>&1 || { echo "ERROR: Cannot connect to target"; exit 1; }
+          echo "✓ Target connection OK"
+          echo ""
+
+          # Migrate each bucket
+          ERRORS=0
+          for bucket in $BUCKETS; do
+            echo "=========================================="
+            echo "Migrating: $bucket"
+            echo "=========================================="
+
+            # Create target bucket if needed
+            mc mb target/$bucket 2>/dev/null || true
+
+            # Mirror bucket
+            echo "Starting mirror..."
+            if mc mirror source/$bucket target/$bucket --overwrite --insecure; then
+              echo "✓ Migrated: $bucket"
+
+              # Show verification
+              SOURCE_COUNT=$(mc ls --recursive source/$bucket --insecure 2>/dev/null | wc -l || echo "0")
+              TARGET_COUNT=$(mc ls --recursive target/$bucket 2>/dev/null | wc -l || echo "0")
+              echo "  Source files: $SOURCE_COUNT"
+              echo "  Target files: $TARGET_COUNT"
+            else
+              echo "✗ Failed: $bucket"
+              ERRORS=$((ERRORS + 1))
+            fi
+            echo ""
+          done
+
+          # Summary
+          echo "=========================================="
+          echo "Migration Summary"
+          echo "=========================================="
+          if [ $ERRORS -eq 0 ]; then
+            echo "✓ All buckets migrated successfully"
+            for bucket in $BUCKETS; do
+              echo "  - $bucket"
+            done
+            exit 0
+          else
+            echo "✗ Migration failed with $ERRORS error(s)"
+            exit 1
+          fi
+        env:
+        - name: MINIO_SOURCE_ENDPOINT
+          value: "https://minio.terapeas.com"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"

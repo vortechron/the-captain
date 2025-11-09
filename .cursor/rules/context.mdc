@@ -9,3 +9,6 @@ this project is mostly to manage and make my life easier when working with k8s o
 /charts (is helm related charts)
 /example (is where actual application usage, just pretend its like one of the laravel application)
 /packaged_charts (ignore this, just for deploying helm)
+
+/k8s folder is how our old legacy digital ocean cluster use do-sgp1-k8s-syncwave 
+/terraform folder is how our new cluster use terraform aks-cluster (azure)
