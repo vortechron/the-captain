@@ -32,7 +32,7 @@ spec:
           echo ""
 
           # Buckets to migrate
-          BUCKETS="db-backup terapeas terapeas-local"
+          BUCKETS="terapeas"
 
           # Verify source endpoint
           if [ -z "$MINIO_SOURCE_ENDPOINT" ]; then

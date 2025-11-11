@@ -40,6 +40,7 @@ echo ""
 # Get credentials
 log_info "Retrieving credentials..."
 XTRABACKUP_PASSWORD=$(kubectl get secret ${CLUSTER}-secrets -n ${NAMESPACE} -o jsonpath='{.data.xtrabackup}' | base64 -d)
+ROOT_PASSWORD=$(kubectl get secret ${CLUSTER}-secrets -n ${NAMESPACE} -o jsonpath='{.data.root}' | base64 -d)
 AWS_ACCESS_KEY=$(kubectl get secret minio-backup-secret -n ${NAMESPACE} -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
 AWS_SECRET_KEY=$(kubectl get secret minio-backup-secret -n ${NAMESPACE} -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)
 
@@ -51,7 +52,7 @@ log_info "Executing backup from PXC pod..."
 echo ""
 
 # Run backup from PXC pod
-kubectl exec -n ${NAMESPACE} ${CLUSTER}-pxc-0 -c pxc -- bash -c "
+kubectl exec -n ${NAMESPACE} ${CLUSTER}-pxc-1 -c pxc -- bash -c "
 set -exo pipefail
 
 export HOME=/tmp
@@ -76,6 +77,7 @@ echo '========================================='
   --storage=s3 \
   --s3-endpoint='${MINIO_ENDPOINT}' \
   --s3-bucket='${MINIO_BUCKET}' \
+  --s3-bucket-lookup=path \
   --parallel=2 \
   '${BACKUP_NAME}'
 
@@ -97,6 +99,45 @@ fi
 "
 
 if [ $? -eq 0 ]; then
+  echo ""
+  log_info "Generating SST metadata for operator restore compatibility..."
+
+  GALERA_UUID=$(kubectl exec -n ${NAMESPACE} ${CLUSTER}-pxc-1 -c pxc -- env MYSQL_PWD="${ROOT_PASSWORD}" mysql -uroot -Nse "SELECT variable_value FROM performance_schema.global_status WHERE variable_name='wsrep_cluster_state_uuid';")
+  GALERA_SEQNO=$(kubectl exec -n ${NAMESPACE} ${CLUSTER}-pxc-1 -c pxc -- env MYSQL_PWD="${ROOT_PASSWORD}" mysql -uroot -Nse "SELECT variable_value FROM performance_schema.global_status WHERE variable_name='wsrep_last_committed';")
+  MYSQL_VERSION=$(kubectl exec -n ${NAMESPACE} ${CLUSTER}-pxc-1 -c pxc -- env MYSQL_PWD="${ROOT_PASSWORD}" mysql -uroot -Nse "SELECT @@version;")
+  BINLOG_NAME=$(kubectl exec -n ${NAMESPACE} ${CLUSTER}-pxc-1 -c pxc -- env MYSQL_PWD="${ROOT_PASSWORD}" mysql -uroot -Nse "SELECT SUBSTRING_INDEX(@@log_bin_basename,'/',-1);")
+
+  GALERA_GTID="${GALERA_UUID}:${GALERA_SEQNO}"
+
+  kubectl exec -n ${NAMESPACE} ${CLUSTER}-pxc-1 -c pxc -- bash -c "
+set -euo pipefail
+export AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY}'
+export AWS_SECRET_ACCESS_KEY='${AWS_SECRET_KEY}'
+export AWS_DEFAULT_REGION='us-east-1'
+cat <<EOF >/tmp/sst_info
+[sst]
+galera-gtid=${GALERA_GTID}
+binlog-name=${BINLOG_NAME}
+mysql-version=${MYSQL_VERSION}
+EOF
+touch /tmp/xtrabackup_tablespaces.meta
+cd /tmp
+/usr/bin/pxc_extra/pxb-8.0/bin/xbstream -c sst_info xtrabackup_tablespaces.meta | /usr/bin/pxc_extra/pxb-8.0/bin/xbcloud put \
+  --storage=s3 \
+  --s3-endpoint='${MINIO_ENDPOINT}' \
+  --s3-bucket='${MINIO_BUCKET}' \
+  --s3-bucket-lookup=path \
+  --parallel=2 \
+  '${BACKUP_NAME}.sst_info'
+rm -f /tmp/sst_info /tmp/xtrabackup_tablespaces.meta
+"
+
+  if [ $? -eq 0 ]; then
+    log_success "SST metadata uploaded successfully"
+  else
+    log_warning "Failed to upload SST metadata. Restore via operator may fail."
+  fi
+
   echo ""
   log_success "Backup completed successfully!"
   log_info "Backup location: s3://${MINIO_BUCKET}/${BACKUP_NAME}"

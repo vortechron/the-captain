@@ -213,12 +213,16 @@ resource "helm_release" "pxc_cluster" {
         storages = var.backup_enabled ? {
           minio-storage = {
             type = "s3"
+            containerOptions = {
+              args = {
+                xbcloud = ["--s3-bucket-lookup=path"]
+              }
+            }
             s3 = {
               bucket            = var.minio_bucket
               region            = var.minio_region
               endpointUrl       = var.minio_endpoint_url
               credentialsSecret = "minio-backup-secret"
-              forcePathStyle    = true
             }
           }
         } : {}
@@ -336,4 +340,3 @@ resource "null_resource" "patch_backup_config" {
 
   depends_on = [helm_release.pxc_cluster]
 }
-

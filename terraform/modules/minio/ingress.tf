@@ -51,6 +51,7 @@ resource "kubernetes_ingress_v1" "minio_ingress" {
     tls {
       hosts = [
         "minio.aks.${var.domain}",
+        "minio.${var.domain}",
         "minio-console.aks.${var.domain}"
       ]
       secret_name = "minio-tls"
@@ -58,6 +59,24 @@ resource "kubernetes_ingress_v1" "minio_ingress" {
 
     rule {
       host = "minio.aks.${var.domain}"
+      http {
+        path {
+          path      = "/"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = kubernetes_service.minio_service.metadata[0].name
+              port {
+                number = 9000
+              }
+            }
+          }
+        }
+      }
+    }
+
+    rule {
+      host = "minio.${var.domain}"
       http {
         path {
           path      = "/"

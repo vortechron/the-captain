@@ -44,10 +44,10 @@ resource "kubernetes_secret" "mysql_cluster_secrets" {
   type = "Opaque"
 
   data = {
-    root         = base64encode(var.root_password != "" ? var.root_password : random_password.mysql_passwords["root"].result)
-    xtrabackup   = base64encode(random_password.mysql_passwords["xtrabackup"].result)
-    monitor      = base64encode(random_password.mysql_passwords["monitor"].result)
-    clustercheck = base64encode(random_password.mysql_passwords["clustercheck"].result)
+    root         = var.root_password != "" ? var.root_password : random_password.mysql_passwords["root"].result
+    xtrabackup   = random_password.mysql_passwords["xtrabackup"].result
+    monitor      = random_password.mysql_passwords["monitor"].result
+    clustercheck = random_password.mysql_passwords["clustercheck"].result
   }
 }
 
@@ -61,10 +61,10 @@ resource "kubernetes_secret" "mysql_cluster_secrets_operator" {
   type = "Opaque"
 
   data = {
-    root         = base64encode(var.root_password != "" ? var.root_password : random_password.mysql_passwords["root"].result)
-    xtrabackup   = base64encode(random_password.mysql_passwords["xtrabackup"].result)
-    monitor      = base64encode(random_password.mysql_passwords["monitor"].result)
-    clustercheck = base64encode(random_password.mysql_passwords["clustercheck"].result)
+    root         = var.root_password != "" ? var.root_password : random_password.mysql_passwords["root"].result
+    xtrabackup   = random_password.mysql_passwords["xtrabackup"].result
+    monitor      = random_password.mysql_passwords["monitor"].result
+    clustercheck = random_password.mysql_passwords["clustercheck"].result
   }
 }
 
