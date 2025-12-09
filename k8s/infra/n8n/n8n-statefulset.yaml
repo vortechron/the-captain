@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: n8n
+  namespace: n8n
+spec:
+  serviceName: n8n
+  replicas: 1
+  selector:
+    matchLabels:
+      app: n8n
+  template:
+    metadata:
+      labels:
+        app: n8n
+    spec:
+      containers:
+      - name: n8n
+        image: n8nio/n8n:1.123.4
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5678
+          name: http
+        env:
+        - name: DB_TYPE
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: DB_TYPE
+        - name: DB_POSTGRESDB_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: n8n-secret
+              key: DB_POSTGRESDB_DATABASE
+        - name: DB_POSTGRESDB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: n8n-secret
+              key: DB_POSTGRESDB_HOST
+        - name: DB_POSTGRESDB_PORT
+          valueFrom:
+            secretKeyRef:
+              name: n8n-secret
+              key: DB_POSTGRESDB_PORT
+        - name: DB_POSTGRESDB_USER
+          valueFrom:
+            secretKeyRef:
+              name: n8n-secret
+              key: DB_POSTGRESDB_USER
+        - name: DB_POSTGRESDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: n8n-secret
+              key: DB_POSTGRESDB_PASSWORD
+        - name: N8N_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: n8n-secret
+              key: N8N_ENCRYPTION_KEY
+        - name: N8N_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: N8N_HOST
+        - name: N8N_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: N8N_PORT
+        - name: N8N_PROTOCOL
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: N8N_PROTOCOL
+        - name: WEBHOOK_URL
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: WEBHOOK_URL
+        - name: GENERIC_TIMEZONE
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: GENERIC_TIMEZONE
+        - name: N8N_METRICS
+          valueFrom:
+            configMapKeyRef:
+              name: n8n-config
+              key: N8N_METRICS
+        volumeMounts:
+        - name: n8n-storage
+          mountPath: /home/node/.n8n
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 5678
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 5678
+          initialDelaySeconds: 10
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: n8n-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: "local-path"
+      resources:
+        requests:
+          storage: 2Gi
