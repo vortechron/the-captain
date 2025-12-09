@@ -14,3 +14,7 @@ output "ingress_nginx_namespace" {
   value       = var.ingress_nginx_enabled ? "ingress-nginx" : null
 }
 
+
+
+
+

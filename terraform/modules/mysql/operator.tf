@@ -38,3 +38,7 @@ resource "helm_release" "pxc_operator" {
   ]
 }
 
+
+
+
+

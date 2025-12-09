@@ -23,3 +23,7 @@ output "aks_cluster_portal_url" {
   value       = "https://portal.azure.com/#@/resource/subscriptions/${var.subscription_id}/resourceGroups/${azurerm_resource_group.main.name}/providers/Microsoft.ContainerService/managedClusters/${azurerm_kubernetes_cluster.main.name}"
 }
 
+
+
+
+

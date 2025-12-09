@@ -19,3 +19,7 @@ output "minio_ingress_name" {
   value       = var.minio_enabled ? module.minio[0].ingress_name : null
 }
 
+
+
+
+

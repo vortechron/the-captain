@@ -90,3 +90,7 @@ variable "redis_resources" {
   }
 }
 
+
+
+
+

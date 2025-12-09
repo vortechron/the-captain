@@ -35,3 +35,7 @@ variable "loki_retention_period" {
   default     = "72h"
 }
 
+
+
+
+

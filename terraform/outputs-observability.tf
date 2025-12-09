@@ -26,3 +26,7 @@ output "prometheus_service_url" {
   value       = var.prometheus_enabled ? module.prometheus[0].service_url : null
 }
 
+
+
+
+

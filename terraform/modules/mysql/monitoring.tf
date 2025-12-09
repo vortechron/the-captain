@@ -306,3 +306,7 @@ resource "kubernetes_job" "mysql_monitoring_user" {
   depends_on = [helm_release.pxc_cluster]
 }
 
+
+
+
+

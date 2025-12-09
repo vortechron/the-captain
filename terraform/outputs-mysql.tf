@@ -44,3 +44,7 @@ output "mysql_monitoring_service_endpoint" {
   value       = var.mysql_enabled && var.mysql_monitoring_enabled ? module.mysql[0].monitoring_service_endpoint : null
 }
 
+
+
+
+

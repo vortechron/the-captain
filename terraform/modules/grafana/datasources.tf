@@ -63,3 +63,7 @@ resource "kubernetes_config_map" "grafana_datasource_prometheus" {
   depends_on = [helm_release.grafana]
 }
 
+
+
+
+

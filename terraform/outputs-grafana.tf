@@ -29,3 +29,7 @@ output "grafana_port_forward_command" {
   value       = var.grafana_enabled ? module.grafana[0].port_forward_command : null
 }
 
+
+
+
+

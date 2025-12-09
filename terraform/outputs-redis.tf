@@ -34,3 +34,7 @@ output "redis_port_forward_command" {
   value       = var.redis_enabled ? module.redis[0].port_forward_command : null
 }
 
+
+
+
+

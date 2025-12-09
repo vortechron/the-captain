@@ -41,3 +41,7 @@ resource "kubernetes_ingress_v1" "grafana_ingress" {
   depends_on = [helm_release.grafana]
 }
 
+
+
+
+

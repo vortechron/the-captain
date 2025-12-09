@@ -58,3 +58,7 @@ resource "kubernetes_service" "minio_console" {
   }
 }
 
+
+
+
+

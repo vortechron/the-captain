@@ -61,3 +61,7 @@ variable "minio_chart_version" {
   default     = ""
 }
 
+
+
+
+

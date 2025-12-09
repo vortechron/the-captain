@@ -167,3 +167,7 @@ module "redis" {
   # Removed depends_on: Redis uses ClusterIP service, doesn't need ingress-nginx
 }
 
+
+
+
+

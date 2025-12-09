@@ -48,3 +48,7 @@ variable "aks_d4_node_count" {
   default     = 1
 }
 
+
+
+
+

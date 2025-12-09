@@ -13,3 +13,7 @@ resource "kubernetes_secret" "minio_secret" {
   }
 }
 
+
+
+
+

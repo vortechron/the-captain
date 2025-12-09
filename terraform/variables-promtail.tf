@@ -23,3 +23,7 @@ variable "promtail_loki_url" {
   default     = ""
 }
 
+
+
+
+

@@ -68,3 +68,7 @@ resource "kubernetes_secret" "mysql_cluster_secrets_operator" {
   }
 }
 
+
+
+
+

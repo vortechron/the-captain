@@ -135,3 +135,7 @@ resource "kubernetes_deployment" "minio" {
   }
 }
 
+
+
+
+

@@ -121,18 +121,102 @@ After deployment, MinIO will be available at:
 
 ## DNS Configuration
 
-After deployment, configure DNS records:
+After deployment, configure DNS records to point to the LoadBalancer IP:
 
-```
-minio.{domain}          -> [ingress-ip]
-minio-console.{domain}  -> [ingress-ip]
-```
-
-Get the ingress IP with:
+### Step 1: Get the LoadBalancer IP
 
 ```bash
-kubectl get ingress -n minio minio-ingress
+kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
 ```
+
+Or use the diagnostic script:
+
+```bash
+./terraform/diagnose-minio-access.sh
+```
+
+### Step 2: Configure DNS A Records
+
+Add the following DNS A records in your DNS provider (e.g., Cloudflare, Route53, Azure DNS):
+
+| Type | Name | Value | TTL |
+|------|------|-------|-----|
+| A | `minio` | `[LoadBalancer IP from Step 1]` | 300 |
+| A | `minio-console` | `[LoadBalancer IP from Step 1]` | 300 |
+
+**Example for terapeas.com domain:**
+- `minio.terapeas.com` → `[LoadBalancer IP]`
+- `minio-console.terapeas.com` → `[LoadBalancer IP]`
+
+### Step 3: Verify DNS Propagation
+
+```bash
+dig minio.terapeas.com
+# or
+nslookup minio.terapeas.com
+```
+
+DNS should resolve to the LoadBalancer IP. Propagation can take a few minutes.
+
+### Step 4: Wait for SSL Certificate
+
+After DNS is configured, cert-manager will automatically provision SSL certificates. Check status:
+
+```bash
+kubectl get certificate -n minio
+kubectl describe certificate -n minio minio-tls
+```
+
+Certificates typically take 1-5 minutes to provision.
+
+## Troubleshooting Access Issues
+
+If you cannot access MinIO from your local machine:
+
+### Common Issues
+
+1. **DNS not configured** - Most common issue
+   - Verify DNS points to LoadBalancer IP: `dig minio.terapeas.com`
+   - Update DNS A record if incorrect
+
+2. **LoadBalancer has no external IP**
+   - Check service status: `kubectl get svc -n ingress-nginx ingress-nginx-controller`
+   - Wait a few minutes for Azure to provision the LoadBalancer
+
+3. **Certificate not ready**
+   - Check certificate status: `kubectl get certificate -n minio`
+   - Check cert-manager logs: `kubectl logs -n cert-manager -l app=cert-manager`
+
+4. **Azure NSG blocking traffic**
+   - Azure Load Balancers created by AKS should automatically allow traffic
+   - Verify LoadBalancer rules: `az network lb rule list --resource-group <rg> --lb-name <lb-name>`
+
+### Diagnostic Script
+
+Run the comprehensive diagnostic script:
+
+```bash
+cd terraform
+./diagnose-minio-access.sh
+```
+
+This script will:
+- Check LoadBalancer IP
+- Verify DNS configuration
+- Check ingress status
+- Check certificate status
+- Test direct access (bypassing DNS)
+
+### Test Direct Access (Bypass DNS)
+
+If DNS isn't configured yet, test directly with the LoadBalancer IP:
+
+```bash
+LB_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+curl -k -H "Host: minio.terapeas.com" "https://$LB_IP/"
+```
+
+If this works, DNS configuration is the issue.
 
 ## Notes
 

@@ -52,7 +52,8 @@ resource "kubernetes_ingress_v1" "minio_ingress" {
       hosts = [
         "minio.aks.${var.domain}",
         "minio.${var.domain}",
-        "minio-console.aks.${var.domain}"
+        "minio-console.aks.${var.domain}",
+        "minio-console.${var.domain}"
       ]
       secret_name = "minio-tls"
     }
@@ -95,6 +96,24 @@ resource "kubernetes_ingress_v1" "minio_ingress" {
 
     rule {
       host = "minio-console.aks.${var.domain}"
+      http {
+        path {
+          path      = "/"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = kubernetes_service.minio_console.metadata[0].name
+              port {
+                number = 9001
+              }
+            }
+          }
+        }
+      }
+    }
+
+    rule {
+      host = "minio-console.${var.domain}"
       http {
         path {
           path      = "/"

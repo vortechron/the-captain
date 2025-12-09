@@ -21,3 +21,7 @@ resource "kubernetes_persistent_volume_claim" "minio_pvc" {
   wait_until_bound = false
 }
 
+
+
+
+
