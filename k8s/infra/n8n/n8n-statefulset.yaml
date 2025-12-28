@@ -87,6 +87,14 @@ spec:
             configMapKeyRef:
               name: n8n-config
               key: N8N_METRICS
+        - name: N8N_PROXY_HOPS
+          value: "1"
+        - name: N8N_ZOHO_OAUTH2_API_SCOPE
+          value: "ZohoCRM.modules.ALL,ZohoCRM.users.ALL,ZohoCRM.settings.ALL,ZohoCRM.org.ALL,ZohoCRM.bulk.ALL,ZohoCRM.change_owner.CREATE"
+        - name: N8N_LOG_LEVEL
+          value: "debug"
+        - name: N8N_LOG_OUTPUT
+          value: "console"
         volumeMounts:
         - name: n8n-storage
           mountPath: /home/node/.n8n

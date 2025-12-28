@@ -10,9 +10,9 @@ resource "kubernetes_secret" "mysql_exporter_secret" {
   type = "Opaque"
 
   data = {
-    MYSQL_USER       = base64encode(var.monitoring_user)
-    MYSQL_PASSWORD   = base64encode(var.monitoring_password)
-    DATA_SOURCE_NAME = base64encode("${var.monitoring_user}:${var.monitoring_password}@(${var.cluster_name}-pxc-db-haproxy.${var.namespace}.svc.cluster.local:3306)/")
+    MYSQL_USER       = var.monitoring_user
+    MYSQL_PASSWORD   = var.monitoring_password
+    DATA_SOURCE_NAME = "${var.monitoring_user}:${var.monitoring_password}@(${var.cluster_name}-pxc-db-haproxy.${var.namespace}.svc.cluster.local:3306)/"
   }
 
   depends_on = [helm_release.pxc_cluster]

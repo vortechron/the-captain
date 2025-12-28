@@ -60,12 +60,12 @@ variable "pxc_resources" {
   })
   default = {
     requests = {
-      cpu    = "500m"
-      memory = "1Gi"
-    }
-    limits = {
       cpu    = "1000m"
       memory = "2Gi"
+    }
+    limits = {
+      cpu    = "2000m"
+      memory = "4Gi"
     }
   }
 }
@@ -96,12 +96,12 @@ variable "haproxy_resources" {
   })
   default = {
     requests = {
-      cpu    = "100m"
-      memory = "256Mi"
+      cpu    = "200m"
+      memory = "512Mi"
     }
     limits = {
-      cpu    = "500m"
-      memory = "512Mi"
+      cpu    = "1000m"
+      memory = "1Gi"
     }
   }
 }

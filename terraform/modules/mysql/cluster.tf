@@ -80,8 +80,8 @@ resource "helm_release" "pxc_cluster" {
                    binlog_format=ROW
                    default_storage_engine=InnoDB
                    innodb_autoinc_lock_mode=2
-                   max_connections=1024
-                   innodb_buffer_pool_size=512M
+                   max_connections=2048
+                   innodb_buffer_pool_size=2G
 
                    # Binary logging for PITR
                    log-bin=mysql-bin
@@ -119,18 +119,21 @@ resource "helm_release" "pxc_cluster" {
             ]
           }
           podAntiAffinity = {
-            requiredDuringSchedulingIgnoredDuringExecution = [
+            preferredDuringSchedulingIgnoredDuringExecution = [
               {
-                labelSelector = {
-                  matchExpressions = [
-                    {
-                      key      = "app.kubernetes.io/name"
-                      operator = "In"
-                      values   = ["percona-xtradb-cluster"]
-                    }
-                  ]
+                weight = 100
+                podAffinityTerm = {
+                  labelSelector = {
+                    matchExpressions = [
+                      {
+                        key      = "app.kubernetes.io/name"
+                        operator = "In"
+                        values   = ["percona-xtradb-cluster"]
+                      }
+                    ]
+                  }
+                  topologyKey = "kubernetes.io/hostname"
                 }
-                topologyKey = "kubernetes.io/hostname"
               }
             ]
           }
