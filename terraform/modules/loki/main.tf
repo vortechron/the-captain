@@ -58,6 +58,13 @@ resource "helm_release" "loki" {
           reject_old_samples_max_age = "168h"
           allow_structured_metadata = false
         }
+        compactor = {
+          working_directory = "/var/loki/compactor"
+          retention_enabled = true
+          retention_delete_delay = "2h"
+          retention_delete_worker_count = 150
+          delete_request_store = "filesystem"
+        }
       }
 
       singleBinary = {

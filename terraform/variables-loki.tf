@@ -26,7 +26,7 @@ variable "loki_storage_class" {
 variable "loki_storage_size" {
   description = "Size of the Loki persistent volume"
   type        = string
-  default     = "3Gi"
+  default     = "10Gi"
 }
 
 variable "loki_retention_period" {
