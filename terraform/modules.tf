@@ -167,7 +167,29 @@ module "redis" {
   # Removed depends_on: Redis uses ClusterIP service, doesn't need ingress-nginx
 }
 
+# MeiliSearch Module
+module "meilisearch" {
+  count = var.meilisearch_enabled ? 1 : 0
 
+  source = "./modules/meilisearch"
 
+  namespace           = var.meilisearch_namespace
+  release_name        = var.meilisearch_release_name
+  chart_version       = var.meilisearch_chart_version
+  domain              = var.meilisearch_domain
+  cluster_issuer_name = var.meilisearch_cluster_issuer_name
+  master_key          = var.meilisearch_master_key
+  storage_class       = var.meilisearch_storage_class
+  storage_size        = var.meilisearch_storage_size
+  resources           = var.meilisearch_resources
 
+  helm_wait_enabled          = var.helm_wait_enabled
+  helm_wait_for_jobs_enabled = var.helm_wait_for_jobs_enabled
+  helm_timeout               = var.helm_timeout
+
+  depends_on = [
+    helm_release.ingress_nginx_repo,
+    helm_release.cert_manager
+  ]
+}
 
